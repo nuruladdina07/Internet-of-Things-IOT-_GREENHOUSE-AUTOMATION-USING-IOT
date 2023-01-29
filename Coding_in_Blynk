@@ -1,0 +1,80 @@
+#include <BlynkSimpleShieldEsp8266.h>
+#include <ESP8266_Lib.h>
+#include "DHT.h"
+#include <SoftwareSerial.h>
+
+// Insert AuthToken that has been sent via email
+char auth[] = "xxx";
+// Your WiFi credentials.
+// Set password to "" for open networks.
+char ssid[] = "xxx";
+char pass[] = "xxx";
+
+SoftwareSerial pc(2, 3);
+// Your ESP8266 baud rate:
+#define ESP8266_BAUD 115200
+
+#define BLYNK_PRINT pc
+#define EspSerial Serial
+ESP8266 wifi(&EspSerial);
+
+#define DHTPIN 2 // what digital pin we're connected to
+#define DHTTYPE DHT11 // DHT 11
+DHT dht(DHTPIN, DHTTYPE);
+int moisture = A0;
+BlynkTimer timer;
+void sendSensor()
+{
+float h = dht.readHumidity();
+float t = dht.readTemperature(); // or dht.readTemperature(true) for Fahrenheit
+
+if (isnan(h) || isnan(t)) {
+Serial.println("Failed to read from DHT sensor!");
+return;
+}
+float moisturelevel = analogRead(moisture);
+int percntmoisture=(-0.1563*moisturelevel) + 147.98; //equation from calibration
+if(percntmoisture<0){percntmoisture=0;}
+// Serial.print("moisturelevel=");
+// Serial.println(moisturelevel);
+// Serial.print("moisture%=");
+// Serial.println(percntmoisture);
+// Serial.print("Humidity=");
+// Serial.println(h);
+// Serial.print("Temperature=");
+// Serial.println(t);
+// Serial.println();
+// You can send any value at any time.
+// Please don't send more that 10 values per second.
+Blynk.virtualWrite(V1, percntmoisture);
+Blynk.virtualWrite(V3, h);
+Blynk.virtualWrite(V2, t);
+}
+void setup()
+{
+
+pinMode(moisture, INPUT);
+
+// Serial.begin(9600);
+pc.begin(115200);
+EspSerial.begin(ESP8266_BAUD);
+
+Blynk.begin(auth, wifi, ssid, pass);
+
+dht.begin();
+
+delay(7000);
+//mySerial.println("AT+CNMI=2,2,0,0,0"); // AT Command to receive a live SMS
+//Serial.println(message);
+timer.setInterval(1000L, sendSensor);
+}
+
+void loop() {
+// float moisturelevel = analogRead(moisture);
+// int percntmoisture=(-0.1796*moisturelevel) + 159.15; //equation from calibration
+//
+// Serial.print("moisturelevel=");
+// Serial.println(moisturelevel);
+Blynk.run();
+timer.run();
+}
